@@ -6,6 +6,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <stdbool.h>
+#include <pwd.h>
 
 void exit_command(char **arguments, int arguments_count)
 {
@@ -133,7 +134,6 @@ char *replace_home_directory(const char *path)
   if (home == NULL)
     return strdup(path);
 
-  size_t home_len = strlen(home);
   size_t path_len = strlen(path);
 
   char *result = malloc(100000);
@@ -145,8 +145,46 @@ char *replace_home_directory(const char *path)
   {
     if (path[i] == '~')
     {
-      strcpy(result + result_index, home);
-      result_index += home_len;
+      size_t username_len = 0;
+      if (path[i + 1] != '\0' && path[i + 1] != '/')
+      {
+        const char *end = strchr(path + i + 1, '/');
+        if (end != NULL)
+        {
+          username_len = end - (path + i + 1);
+        }
+        else
+        {
+          username_len = strlen(path + i + 1);
+        }
+      }
+
+      if (username_len == 0)
+      {
+        // Replace '~' as '$HOME'
+        strcpy(result + result_index, home);
+        result_index += strlen(home);
+      }
+      else
+      {
+        char *username = strndup(path + i + 1, username_len);
+        struct passwd *pw = getpwnam(username);
+        if (pw != NULL)
+        {
+          // Replace '~username' as 'username_home_path'
+          strcpy(result + result_index, pw->pw_dir);
+          result_index += strlen(pw->pw_dir);
+        }
+        else
+        {
+          // Maintain '~username' as '~username'
+          strncpy(result + result_index, path + i, username_len + 1);
+          result_index += username_len + 1;
+        }
+        free(username);
+      }
+
+      i += username_len;
     }
     else
     {

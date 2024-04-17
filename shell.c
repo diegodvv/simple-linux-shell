@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <stdbool.h>
 
 void exit_command(char **arguments, int arguments_count)
 {
@@ -35,7 +36,7 @@ void cd_command(char **arguments, int arguments_count)
   }
 }
 
-void exec_command(char **arguments, int arguments_count)
+void exec_command(char **arguments, int arguments_count, bool should_exit)
 {
   if (arguments_count < 1)
   {
@@ -52,6 +53,7 @@ void exec_command(char **arguments, int arguments_count)
   else if (pid == 0)
   {
     // Child process
+    arguments[arguments_count] = NULL;
     if (execv(arguments[0], arguments) == -1)
     {
       perror("execv() error");
@@ -65,8 +67,9 @@ void exec_command(char **arguments, int arguments_count)
     waitpid(pid, &status, 0);
   }
 
-  // The shell does not return after executing the command
-  exit(0);
+  if (should_exit)
+    // The shell does not return after executing the command
+    exit(0);
 }
 
 void print_cwd()
@@ -120,7 +123,18 @@ int main()
       }
       else if (strcmp(program, "exec") == 0)
       {
-        exec_command(arguments, arguments_count);
+        exec_command(arguments, arguments_count, true);
+      }
+      else if (program[0] == '.' || program[0] == '/')
+      {
+        char *arguments_with_program[100];
+        arguments_with_program[0] = program;
+        for (int i = 0; i < arguments_count; i++)
+        {
+          arguments_with_program[i + 1] = arguments[i];
+        }
+
+        exec_command(arguments_with_program, arguments_count + 1, false);
       }
       else
       {

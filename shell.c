@@ -1,6 +1,33 @@
+// Simple Linux Shell implemented in C
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
+
+void exit_command(char **arguments, int arguments_count)
+{
+  if (arguments_count > 0)
+  {
+    printf("Error: No arguments should be provided to exit\n");
+    exit(1);
+  }
+
+  exit(0);
+}
+
+void cd_command(char **arguments, int arguments_count)
+{
+  if (arguments_count != 1)
+  {
+    printf("Error: cd command takes exactly one argument\n");
+    return;
+  }
+
+  if (chdir(arguments[0]) != 0)
+  {
+    perror("chdir() error");
+    return;
+  }
+}
 
 void print_cwd()
 {
@@ -36,13 +63,25 @@ int main()
       char *program = strtok_r(input, " ", &saveptr);
 
       char *token = strtok_r(NULL, " ", &saveptr);
+      arguments_count = 0;
       while (token != NULL)
       {
         arguments[arguments_count++] = token;
         token = strtok_r(NULL, " ", &saveptr);
       }
 
-      printf("Unrecognized command: %s\n", program);
+      if (strcmp(program, "exit") == 0)
+      {
+        exit_command(arguments, arguments_count);
+      }
+      else if (strcmp(program, "cd") == 0)
+      {
+        cd_command(arguments, arguments_count);
+      }
+      else
+      {
+        printf("Unrecognized command: %s\n", program);
+      }
     }
 
     print_cwd();

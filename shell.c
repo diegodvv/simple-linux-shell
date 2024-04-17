@@ -37,7 +37,7 @@ void cd_command(char **arguments, int arguments_count)
   }
 }
 
-void exec_command(char **arguments, int arguments_count, bool should_exit)
+void exec_command(char **arguments, int arguments_count, bool should_exit, FILE *input_file, FILE *output_file)
 {
   if (arguments_count < 1)
   {
@@ -55,6 +55,26 @@ void exec_command(char **arguments, int arguments_count, bool should_exit)
   {
     // Child process
     arguments[arguments_count] = NULL;
+
+    if (input_file != NULL)
+    {
+      // Redirect stdin to input file
+      if (dup2(fileno(input_file), STDIN_FILENO) == -1)
+      {
+        perror("dup2() error");
+        exit(errno);
+      }
+    }
+    if (output_file != NULL)
+    {
+      // Redirect stdout to output file
+      if (dup2(fileno(output_file), STDOUT_FILENO) == -1)
+      {
+        perror("dup2() error");
+        exit(errno);
+      }
+    }
+
     if (execv(arguments[0], arguments) == -1)
     {
       perror("execv() error");
@@ -86,7 +106,7 @@ void print_cwd()
   printf("%s$ ", cwd);
 }
 
-bool try_to_exec_command_in_path(char *program, char **arguments, int arguments_count)
+bool try_to_exec_command_in_path(char *program, char **arguments, int arguments_count, FILE *input_file, FILE *output_file)
 {
   char *path = getenv("PATH");
 
@@ -115,7 +135,7 @@ bool try_to_exec_command_in_path(char *program, char **arguments, int arguments_
         arguments_with_program[i + 1] = arguments[i];
       }
 
-      exec_command(arguments_with_program, arguments_count + 1, false);
+      exec_command(arguments_with_program, arguments_count + 1, false, input_file, output_file);
       return true;
     }
 
@@ -218,10 +238,53 @@ int main()
 
       char *token = strtok_r(NULL, " \t\n\r", &saveptr);
       arguments_count = 0;
+      char *input_file_name = NULL;
+      char *output_file_name = NULL;
       while (token != NULL)
       {
-        arguments[arguments_count++] = replace_home_directory(token);
+        if (strcmp(token, "<") == 0 || strcmp(token, ">") == 0)
+        {
+          if (strcmp(token, "<") == 0)
+          {
+            input_file_name = replace_home_directory(strtok_r(NULL, " \t\n\r", &saveptr));
+          }
+          else
+          {
+            output_file_name = replace_home_directory(strtok_r(NULL, " \t\n\r", &saveptr));
+          }
+        }
+        // Don't store to program arguments the redirection operators
+        else
+        {
+          arguments[arguments_count++] = replace_home_directory(token);
+        }
+
         token = strtok_r(NULL, " \t\n\r", &saveptr);
+      }
+
+      FILE *input_file;
+      FILE *output_file;
+
+      // Open input file if present
+      if (input_file_name != NULL)
+      {
+        input_file = fopen(input_file_name, "r");
+        if (input_file == NULL)
+        {
+          printf("Error: File '%s' does not exist\n", input_file_name);
+          return 1;
+        }
+      }
+
+      // Open output file if present
+      if (output_file_name != NULL)
+      {
+        output_file = fopen(output_file_name, "w");
+        if (output_file == NULL)
+        {
+          printf("Error: Unable to open file '%s'\n", output_file_name);
+          return 1;
+        }
       }
 
       if (strcmp(program, "exit") == 0)
@@ -234,7 +297,7 @@ int main()
       }
       else if (strcmp(program, "exec") == 0)
       {
-        exec_command(arguments, arguments_count, true);
+        exec_command(arguments, arguments_count, true, input_file, output_file);
       }
       else if (program[0] == '.' || program[0] == '/')
       {
@@ -245,11 +308,11 @@ int main()
           arguments_with_program[i + 1] = arguments[i];
         }
 
-        exec_command(arguments_with_program, arguments_count + 1, false);
+        exec_command(arguments_with_program, arguments_count + 1, false, input_file, output_file);
       }
       else
       {
-        bool executed_program = try_to_exec_command_in_path(program, arguments, arguments_count);
+        bool executed_program = try_to_exec_command_in_path(program, arguments, arguments_count, input_file, output_file);
 
         if (!executed_program)
           printf("Unrecognized command: %s\n", program);
@@ -260,6 +323,11 @@ int main()
       {
         free(arguments[i]);
       }
+
+      if (input_file != NULL)
+        fclose(input_file);
+      if (output_file != NULL)
+        fclose(output_file);
     }
 
     print_cwd();

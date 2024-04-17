@@ -85,6 +85,45 @@ void print_cwd()
   printf("%s$ ", cwd);
 }
 
+bool try_to_exec_command_in_path(char *program, char **arguments, int arguments_count)
+{
+  char *path = getenv("PATH");
+
+  if (path == NULL)
+  {
+    printf("Error: PATH environment variable not set\n");
+    return false;
+  }
+
+  char path_copy[10000];
+  strncpy(path_copy, path, strlen(path));
+
+  char *saveptr;
+  char *dir = strtok_r(path_copy, ":", &saveptr);
+  while (dir != NULL)
+  {
+    char command_path[1024];
+    snprintf(command_path, sizeof(command_path), "%s/%s", dir, program);
+
+    if (access(command_path, X_OK) == 0)
+    {
+      char *arguments_with_program[100];
+      arguments_with_program[0] = command_path;
+      for (int i = 0; i < arguments_count; i++)
+      {
+        arguments_with_program[i + 1] = arguments[i];
+      }
+
+      exec_command(arguments_with_program, arguments_count + 1, false);
+      return true;
+    }
+
+    dir = strtok_r(NULL, ":", &saveptr);
+  }
+
+  return false;
+}
+
 int main()
 {
   char input[1024];
@@ -138,7 +177,10 @@ int main()
       }
       else
       {
-        printf("Unrecognized command: %s\n", program);
+        bool executed_program = try_to_exec_command_in_path(program, arguments, arguments_count);
+
+        if (!executed_program)
+          printf("Unrecognized command: %s\n", program);
       }
     }
 

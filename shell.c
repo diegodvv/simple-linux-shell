@@ -124,6 +124,40 @@ bool try_to_exec_command_in_path(char *program, char **arguments, int arguments_
   return false;
 }
 
+char *replace_home_directory(const char *path)
+{
+  if (path == NULL)
+    return NULL;
+
+  const char *home = getenv("HOME");
+  if (home == NULL)
+    return strdup(path);
+
+  size_t home_len = strlen(home);
+  size_t path_len = strlen(path);
+
+  char *result = malloc(100000);
+  if (result == NULL)
+    return NULL;
+
+  size_t result_index = 0;
+  for (size_t i = 0; i < path_len; i++)
+  {
+    if (path[i] == '~')
+    {
+      strcpy(result + result_index, home);
+      result_index += home_len;
+    }
+    else
+    {
+      result[result_index++] = path[i];
+    }
+  }
+  result[result_index] = '\0';
+
+  return result;
+}
+
 int main()
 {
   char input[1024];
@@ -142,13 +176,13 @@ int main()
     if (strlen(input) > 0)
     {
       char *saveptr;
-      char *program = strtok_r(input, " ", &saveptr);
+      char *program = replace_home_directory(strtok_r(input, " ", &saveptr));
 
       char *token = strtok_r(NULL, " ", &saveptr);
       arguments_count = 0;
       while (token != NULL)
       {
-        arguments[arguments_count++] = token;
+        arguments[arguments_count++] = replace_home_directory(token);
         token = strtok_r(NULL, " ", &saveptr);
       }
 
@@ -181,6 +215,12 @@ int main()
 
         if (!executed_program)
           printf("Unrecognized command: %s\n", program);
+      }
+
+      free(program);
+      for (int i = 0; i < arguments_count; i++)
+      {
+        free(arguments[i]);
       }
     }
 

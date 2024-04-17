@@ -1,14 +1,17 @@
-// Simple Linux Shell implemented in C
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
+#include <errno.h>
+#include <stdlib.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 
 void exit_command(char **arguments, int arguments_count)
 {
   if (arguments_count > 0)
   {
     printf("Error: No arguments should be provided to exit\n");
-    exit(1);
+    return;
   }
 
   exit(0);
@@ -27,6 +30,49 @@ void cd_command(char **arguments, int arguments_count)
     perror("chdir() error");
     return;
   }
+}
+
+void exec_command(char **arguments, int arguments_count)
+{
+  if (arguments_count < 1)
+  {
+    printf("Error: exec command requires at least one argument\n");
+    return;
+  }
+
+  pid_t pid = fork();
+  if (pid < 0)
+  {
+    perror("fork() error");
+    return;
+  }
+  else if (pid == 0)
+  {
+    // Child process
+    char **arguments_to_new_program = malloc(sizeof(arguments[0]) * (arguments_count - 1));
+
+    for (int i = 1; i < arguments_count; i++)
+    {
+      arguments_to_new_program[i - 1] = arguments[i];
+    }
+
+    if (execv(arguments[0], arguments_to_new_program) == -1)
+    {
+      perror("execv() error");
+      exit(errno);
+    }
+
+    free(arguments_to_new_program);
+  }
+  else
+  {
+    // Parent process
+    int status;
+    waitpid(pid, &status, 0);
+  }
+
+  // The shell does not return after executing the command
+  exit(0);
 }
 
 void print_cwd()
@@ -77,6 +123,10 @@ int main()
       else if (strcmp(program, "cd") == 0)
       {
         cd_command(arguments, arguments_count);
+      }
+      else if (strcmp(program, "exec") == 0)
+      {
+        exec_command(arguments, arguments_count);
       }
       else
       {

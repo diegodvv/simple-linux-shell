@@ -8,6 +8,9 @@
 
 void exit_command(char **arguments, int arguments_count)
 {
+  // Disables the unused parameter warning for arguments
+  (void)arguments;
+
   if (arguments_count > 0)
   {
     printf("Error: No arguments should be provided to exit\n");
@@ -49,20 +52,11 @@ void exec_command(char **arguments, int arguments_count)
   else if (pid == 0)
   {
     // Child process
-    char **arguments_to_new_program = malloc(sizeof(arguments[0]) * (arguments_count - 1));
-
-    for (int i = 1; i < arguments_count; i++)
-    {
-      arguments_to_new_program[i - 1] = arguments[i];
-    }
-
-    if (execv(arguments[0], arguments_to_new_program) == -1)
+    if (execv(arguments[0], arguments) == -1)
     {
       perror("execv() error");
       exit(errno);
     }
-
-    free(arguments_to_new_program);
   }
   else
   {

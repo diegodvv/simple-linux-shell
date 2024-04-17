@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <unistd.h>
+#include <string.h>
 
 void print_cwd()
 {
@@ -17,6 +18,8 @@ void print_cwd()
 int main()
 {
   char input[1024];
+  char *arguments[100];
+  int arguments_count = 0;
 
   print_cwd();
   while (fgets(input, sizeof(input), stdin) != NULL)
@@ -29,7 +32,17 @@ int main()
 
     if (strlen(input) > 0)
     {
-      printf("Unrecognized command\n");
+      char *saveptr;
+      char *program = strtok_r(input, " ", &saveptr);
+
+      char *token = strtok_r(NULL, " ", &saveptr);
+      while (token != NULL)
+      {
+        arguments[arguments_count++] = token;
+        token = strtok_r(NULL, " ", &saveptr);
+      }
+
+      printf("Unrecognized command: %s\n", program);
     }
 
     print_cwd();

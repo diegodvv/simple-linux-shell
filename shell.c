@@ -214,14 +214,14 @@ int main()
     if (strlen(input) > 0)
     {
       char *saveptr;
-      char *program = replace_home_directory(strtok_r(input, " ", &saveptr));
+      char *program = replace_home_directory(strtok_r(input, " \t\n\r", &saveptr));
 
-      char *token = strtok_r(NULL, " ", &saveptr);
+      char *token = strtok_r(NULL, " \t\n\r", &saveptr);
       arguments_count = 0;
       while (token != NULL)
       {
         arguments[arguments_count++] = replace_home_directory(token);
-        token = strtok_r(NULL, " ", &saveptr);
+        token = strtok_r(NULL, " \t\n\r", &saveptr);
       }
 
       if (strcmp(program, "exit") == 0)

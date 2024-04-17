@@ -21,8 +21,16 @@ int main()
   print_cwd();
   while (fgets(input, sizeof(input), stdin) != NULL)
   {
-    // Process the user input here
-    // ...
+    // Remove trailing newline
+    if (input[strlen(input) - 1] == '\n')
+    {
+      input[strlen(input) - 1] = '\0';
+    }
+
+    if (strlen(input) > 0)
+    {
+      printf("Unrecognized command\n");
+    }
 
     print_cwd();
   }

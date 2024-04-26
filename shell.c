@@ -216,11 +216,21 @@ char *replace_home_directory(const char *path)
   return result;
 }
 
+struct Command
+{
+  char *arguments[100];
+  int arguments_count;
+
+  char *program;
+  char *input_file_name;
+  char *output_file_name;
+};
+
 int main()
 {
   char input[1024];
-  char *arguments[100];
-  int arguments_count = 0;
+  struct Command *commands[100];
+  int commands_count = 0;
 
   print_cwd();
   while (fgets(input, sizeof(input), stdin) != NULL)
@@ -233,11 +243,19 @@ int main()
 
     if (strlen(input) > 0)
     {
+      struct Command *command = malloc(sizeof(struct Command));
+      if (command == NULL)
+      {
+        perror("malloc() error");
+        return 1;
+      }
+      char **arguments = command->arguments;
+
       char *saveptr;
       char *program = replace_home_directory(strtok_r(input, " \t\n\r", &saveptr));
 
       char *token = strtok_r(NULL, " \t\n\r", &saveptr);
-      arguments_count = 0;
+      int arguments_count = 0;
       char *input_file_name = NULL;
       char *output_file_name = NULL;
       while (token != NULL)
@@ -261,6 +279,12 @@ int main()
 
         token = strtok_r(NULL, " \t\n\r", &saveptr);
       }
+
+      command->arguments_count = arguments_count;
+      command->input_file_name = input_file_name;
+      command->output_file_name = output_file_name;
+      command->program = program;
+      commands[commands_count++] = command;
 
       FILE *input_file;
       FILE *output_file;
@@ -325,9 +349,15 @@ int main()
       }
 
       if (input_file != NULL)
+      {
         fclose(input_file);
+        free(input_file_name);
+      }
       if (output_file != NULL)
+      {
         fclose(output_file);
+        free(output_file_name);
+      }
     }
 
     print_cwd();

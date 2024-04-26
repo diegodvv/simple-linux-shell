@@ -285,6 +285,16 @@ int main()
       command->output_file_name = output_file_name;
       command->program = program;
       commands[commands_count++] = command;
+    }
+
+    for (int i = 0; i < commands_count; i++)
+    {
+      struct Command *command = commands[i];
+      char **arguments = command->arguments;
+      int arguments_count = command->arguments_count;
+      char *program = command->program;
+      char *input_file_name = command->input_file_name;
+      char *output_file_name = command->output_file_name;
 
       FILE *input_file;
       FILE *output_file;
